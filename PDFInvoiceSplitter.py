@@ -101,7 +101,7 @@ def split_invoicePDF(invoicesDict, path):
             writer.write(out)
 #-------------- MAIN ------------------
 
-pdf_path=r"G:Office Share/MISS LE/HD95/Image_001.pdf"
+pdf_path=r"C:/.../PDFInvoice.pdf"
 
 #List of Tuples [(Invoice#, Page#), ...]
 invoices = []
