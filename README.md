@@ -3,6 +3,12 @@
 
 Separates a large sorted PDF containing multiple Invoices into individual PDF Invoice files
 
+==================    HOW TO USE    ======================
+
+- Copy and paste PDF path directory into variable, "pdf_file"
+> pdf_path=r"C:/.../PDFInvoice.pdf"
+>> NOTE: Use forward slash ("/") instead of back slash ("\")
+
 ====================    METHOD    ========================
 
 - Uses PyPDF2 library
