@@ -1,4 +1,6 @@
-from PyPDF2 import PdfFileReader
+from ctypes import sizeof
+import os
+from PyPDF2 import PdfFileReader, PdfFileWriter
 
 #returns true if string contains any numerical characters
 def has_numbers(inputString):
@@ -8,19 +10,28 @@ def has_numbers(inputString):
 def is_price(inputString):
     return any(char == "." or char == "," for char in inputString)
 
-#returns true if invoice already exist in that certain page number
-def invoice_exist(pageNumber): 
-    try:
-        if invoices[pageNumber]: 
-            return True
-    except KeyError:
-        return False
+#returns true if invoice is valid
+def is_valid(invoicesDict, pageNumber): 
+    
+    #returns false if invoice# is lower than previous invoice#
+    if len(invoicesDict) > 0: return invoicesDict[-1][0] < pageNumber
+
+    #returns false if invoice already exist in that certain page number
+    for invoice in invoicesDict:
+        if invoice[0] == pageNumber: return False
+
+    return True
 
 #Attempt to recover data by renaming word
 def attempt_data_recovery(word):
     if int(word) < 100000: return "1" + word
 
-#Scrap invoice numbers from every pdf page and add to dictionary{"Page Number": Invoice#}
+#Print invoices (PageNumber - InvoiceNumber)
+def printInvoices(invoicesDict):
+    for invoice in invoicesDict:
+        print(str(invoice[0]) + " - " + invoice[1])
+
+#Scrap invoice numbers from every pdf page and add to list as a tuple(Page Number, Invoice#)
 def scrap_invoices(invoicesDict, path):
 
     pdfFileObject = open(path, 'rb')
@@ -49,8 +60,9 @@ def scrap_invoices(invoicesDict, path):
                 #Only Accept number number range 180000-191000
                 if int(word) >= 180000 and int(word) <= 191000: 
 
-                    #Check if invoice at page already exist
-                    if not invoice_exist(str(i + 1)): invoicesDict[str(i + 1)] = str(word)
+                    #Check if invoice is valid
+                    if is_valid(invoicesDict, i + 1): 
+                        invoicesDict.append((i + 1, str(word)))
 
             except IndexError:
                 print("Out of Index")
@@ -61,13 +73,41 @@ def scrap_invoices(invoicesDict, path):
 
     return invoicesDict
 
+def split_invoicePDF(invoicesDict, path):
+    pdfFileObject = open(path, 'rb')
+    pdfReader = PdfFileReader(pdfFileObject)
+    
+    for index in range(len(invoicesDict)):
+        writer = PdfFileWriter()
+
+        #Get start and end pages for each invoice
+        start = invoicesDict[index][0] - 1
+        if index + 3 < len(invoicesDict):
+            end = invoicesDict[index + 1][0] - 2
+        else: 
+            end = pdfReader.getNumPages() - 1
+
+        #Create new pdf file name/page range
+        while start <= end:
+            writer.addPage(pdfReader.getPage(start))
+            start += 1
+            output_filename = "{}.pdf".format(
+                invoicesDict[index][1]
+            )
+        
+        #Write and save new PDF file
+        parentPdfDir = "/".join(pdf_path.rsplit("/")[0:len(pdf_path.rsplit("/")) - 1])
+        with open(parentPdfDir + "/" + output_filename, "wb") as out:
+            writer.write(out)
 #-------------- MAIN ------------------
 
 pdf_path=r"G:Office Share/MISS LE/HD95/Image_001.pdf"
 
-#Dictionary ("Invoice#" : Page#)
-invoices = {}
+#List of Tuples [(Invoice#, Page#), ...]
+invoices = []
 invoices = scrap_invoices(invoices, pdf_path)
+printInvoices(invoices)
+print(len(invoices))
 
-for key in invoices:
-    print(str(key) + " - " + invoices.get(key))
+#Extracts out all Invoices into seperate PDF files at the pdf_path parent location
+#split_invoicePDF(invoices, pdf_path)
