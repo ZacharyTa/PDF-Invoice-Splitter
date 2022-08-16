@@ -6,8 +6,11 @@ Separates a large sorted PDF containing multiple Invoices into individual PDF In
 ==================    HOW TO USE    ======================
 
 - Copy and paste PDF path directory into variable, "pdf_file"
-> pdf_path=r"C:/.../PDFInvoice.pdf"
+> Ex. pdf_path = r"C:/.../PDFInvoice.pdf"
 >> NOTE: Use forward slash ("/") instead of back slash ("\")
+
+- Run program
+> PDF Files will be extracted within the same parent directory
 
 ====================    METHOD    ========================
 
