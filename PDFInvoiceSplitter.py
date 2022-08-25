@@ -23,7 +23,7 @@ def is_valid(invoicesDict, pageNumber, invoiceNumber):
         if int(invoiceNumber) < 100000: return False
 
         #return false if value incorrect invoice range
-        elif int(invoiceNumber) <= 170000 or int(invoiceNumber) >= 191000: return False
+        elif int(invoiceNumber) <= 170000 or int(invoiceNumber) >= 192000: return False
 
         #returns false if invoice# is lower than previous invoice#
         elif len(invoicesDict) > 0: 
@@ -39,7 +39,7 @@ def is_valid(invoicesDict, pageNumber, invoiceNumber):
         pass
 
 #Attempt to recover data by renaming word
-def attempt_data_recovery(invoicesDict, pageNumber, word):
+def attempt_data_recovery(invoicesDict, pageNumber, word, words):
     try:
         if word.isnumeric(): 
 
@@ -48,6 +48,14 @@ def attempt_data_recovery(invoicesDict, pageNumber, word):
 
             #Remove most significant digit if it'll make the invoice valid
             if int(word) >= 1000000 and is_valid(invoicesDict, pageNumber, word[1:]): return word[1:]
+
+            #Reconstruct fragments ['1', '91', '119] -> ['191119']
+            tempWord = word
+            fragment_index = words.index(word)
+            while words[fragment_index + 1].isnumeric():
+                tempWord += words[fragment_index + 1]
+                fragment_index += 1
+            return tempWord
 
         #removes "'" in word
         if "'" in word:
@@ -95,18 +103,20 @@ def most_valid_Invoice(validWords, invoicesDict):
 
 #attempts to reconstruct valid invoice by concatenating numbers after "invoice" ["Invoice", "1", "8'1", "376"] -> "181376"
 def invoice_reconstruction(validWords, invoicesDict, pageNumber, words, word):
-    indexINV = words.index(word) + 1
     tempWord = ""
-    while "t" in words[indexINV] or has_numbers(words[indexINV]):
-        if has_numbers(words[indexINV]) and "t" not in words[indexINV]:
-            if words[indexINV].isnumeric(): tempWord += words[indexINV]
-            else:
-                for letter in words[indexINV]:
-                    if letter.isdigit(): tempWord += letter
-                    elif letter == "s": tempWord += "5"
-                    elif letter.isalpha(): tempWord += "1"
-        indexINV += 1
-    if is_valid(invoicesDict, pageNumber, tempWord): validWords.append(tempWord)
+    try:
+        indexINV = words.index(word) + 1
+        while "t" in words[indexINV] or has_numbers(words[indexINV]):
+            if has_numbers(words[indexINV]) and "t" not in words[indexINV]:
+                if words[indexINV].isnumeric(): tempWord += words[indexINV]
+                else:
+                    for letter in words[indexINV]:
+                        if letter.isdigit(): tempWord += letter
+                        elif letter == "s": tempWord += "5"
+                        elif letter.isalpha(): tempWord += "1"
+            indexINV += 1
+    except IndexError:
+        if is_valid(invoicesDict, pageNumber, tempWord): validWords.append(tempWord)
 
 #Scrap invoice numbers from every pdf page and add to list as a tuple(Page Number, Invoice#)
 def scrap_invoices(invoicesDict, path):
@@ -115,7 +125,8 @@ def scrap_invoices(invoicesDict, path):
     pdfReader = PdfFileReader(pdfFileObject)
 
     for i in range(0,pdfReader.numPages):
-        print(i)
+        print(f"Page: {i}")
+        invoice_words_dict = ['VO', 'vo', 'NV', 'nv']
         words = []
         # creating a page object
         pageObj = pdfReader.getPage(i)
@@ -129,7 +140,7 @@ def scrap_invoices(invoicesDict, path):
             try:
                 if "bill" in word.lower(): break
                 #Invoice number reconstruction attempt after "Invoice"
-                if "VO" in word or "vo" in word: invoice_reconstruction(validWords, invoicesDict, i + 1, words, word)
+                if word in invoice_words_dict: invoice_reconstruction(validWords, invoicesDict, i + 1, words, word)
 
                 #Check if string has any numbers
                 if has_numbers(word): 
@@ -137,7 +148,7 @@ def scrap_invoices(invoicesDict, path):
                     #Check string if its a price
                     if not is_price(word):
                         #Splits string if it contains "'" or sees if "5" was misread as "s"
-                        if "'" in word or "s" in word: word = attempt_data_recovery(invoicesDict, i + 1, word)
+                        if "'" in word or "s" in word: word = attempt_data_recovery(invoicesDict, i + 1, word, words)
 
                         #Clean string to only have numbers
                         for letter in word:
@@ -146,7 +157,7 @@ def scrap_invoices(invoicesDict, path):
 
                         #Data Recovery Attempt (If misread first number: r90849 -> 190849)
                         if not is_valid(invoicesDict, i + 1, word): 
-                            word = attempt_data_recovery(invoicesDict, i + 1, word)
+                            word = attempt_data_recovery(invoicesDict, i + 1, word, words)
 
                         #Check if invoice is valid
                         if is_valid(invoicesDict, i + 1, word): 
@@ -175,11 +186,12 @@ def split_invoicePDF(invoicesDict, path):
 
         #Get start and end pages for each invoice
         start = invoicesDict[index][0] - 1
-        if index + 3 < len(invoicesDict):
+        end = start
+        if index + 1 < len(invoicesDict):
             end = invoicesDict[index + 1][0] - 2
         else: 
             end = pdfReader.getNumPages() - 1
-
+        
         #Create new pdf file name/page range
         while start <= end:
             writer.addPage(pdfReader.getPage(start))
@@ -205,7 +217,7 @@ def RecursivelyListFileNames(folder, names):
         RecursivelyListFileNames(folderDir, names)
 #-------------- MAIN ------------------
 
-pdf_path=r"C:/Users/User/Desktop/Test/Image_001.pdf"
+pdf_path=r"G:/Office Share/MISS LE/HD95/Image_001.pdf"
 
 #List of Tuples [(Invoice#, Page#), ...]
 invoices = []
